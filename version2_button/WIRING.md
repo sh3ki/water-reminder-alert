@@ -11,7 +11,6 @@
 | Push Button | 1 |
 | 1-Digit 7-Segment Display | 1 |
 | 220Ω Resistor | 8 (7 for 7-seg + 1 for LED) |
-| 10kΩ Resistor | 1 (button pull-down) |
 | M-M Dupont Wires | ~20 |
 | USB Cable | 1 |
 
@@ -21,7 +20,7 @@
 
 | Arduino Pin | Connected To | Notes |
 |---|---|---|
-| **D2** | Button (one leg) | Other leg → GND; 10kΩ from D2 to GND |
+| **D2** | Button (one leg) | Other leg → GND; use `INPUT_PULLUP` in code |
 | **D3** | 7-Seg segment **a** | Via 220Ω resistor |
 | **D4** | 7-Seg segment **b** | Via 220Ω resistor |
 | **D5** | 7-Seg segment **c** | Via 220Ω resistor |
@@ -96,21 +95,16 @@ The 220Ω resistor limits current to ~14mA — safe for both LED and Arduino.
 ## 🔘 Button Wiring
 
 ```
-                   ┌──────────────────── Arduino D2
-                   │
-         ┌─────[Button]─────┐
-         │                  │
-       10kΩ               GND
-         │
-        GND
+Arduino D2 ──────── [Button] ──────── GND
 
-When button is NOT pressed: D2 reads LOW (pulled down via 10kΩ)
-When button IS pressed:     D2 reads HIGH (connected to 5V via button)
+No external 10kΩ resistor is needed.
+Enable internal pull-up using `pinMode(D2, INPUT_PULLUP);`
+
+When button is NOT pressed: D2 reads HIGH (internal pull-up)
+When button IS pressed:     D2 reads LOW (button shorts D2 to GND)
 ```
 
-> Alternative: Skip the 10kΩ resistor and connect one leg of the button directly
-> to D2, enable INPUT_PULLUP in code, and connect the other leg to GND.
-> The provided code uses INPUT_PULLUP — see code notes.
+> This is exactly how the provided code works: `INPUT_PULLUP` on D2.
 
 ---
 
@@ -124,7 +118,6 @@ ARDUINO UNO                          BREADBOARD
                                       
  D2  ──────── [Button leg 1]
               [Button leg 2] ──────── GND rail
-              D2 also ──── 10kΩ ───── GND rail   (pull-down)
 
  D3  ──── 220Ω ──── 7seg pin [a]
  D4  ──── 220Ω ──── 7seg pin [b]
@@ -172,7 +165,23 @@ The current mode is **saved to EEPROM** so it persists after power-off.
 - [ ] Each 7-segment segment has its own 220Ω resistor
 - [ ] Buzzer polarity correct (+/– not reversed)
 - [ ] LED polarity correct (longer leg = anode = toward resistor/D11)
-- [ ] Button connected with 10kΩ pull-down to GND
+- [ ] Button connected between D2 and GND (no 10kΩ needed)
 - [ ] USB cable connected to Arduino and PC
 - [ ] Correct COM port selected in Arduino IDE (Tools → Port)
 - [ ] Board set to "Arduino Uno" in Arduino IDE
+
+---
+
+## 🛠️ If Display Is Wrong Or LED Flashes A Segment
+
+If your mode display does not show `1,2,3,4` correctly, or if buzzer/LED flashing appears on a 7-segment segment, your wiring pin order is different from the default map.
+
+Use the built-in software calibration in `water_reminder_button.ino`:
+
+1. Hold the button while powering/resetting Arduino.
+2. The sketch runs a segment test: logical `a,b,c,d,e,f,g` one by one.
+3. Open Serial Monitor (9600 baud) and note which physical segment lights for each logical segment.
+4. Update `SEG_PIN_BY_LOGICAL[7]` in the sketch so each logical segment points to the correct Arduino pin.
+5. If your display is common-anode, set `SEG_COMMON_ANODE = true`.
+
+After this, modes should display the real digits `1,2,3,4`, and LED will flash in sync with buzzer from the dedicated LED pin.
